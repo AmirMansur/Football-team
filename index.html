@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Football Log Book</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #1e1e2f;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            color: #00ffcc;
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 3px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .add-btn { background: #00cc66; color: white; }
+        .edit-btn { background: orange; }
+        .delete-btn { background: red; color: white; }
+        .status-btn { background: #0099ff; color: white; }
+
+        table {
+            margin: auto;
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 90%;
+        }
+
+        th, td {
+            border: 1px solid white;
+            padding: 10px;
+        }
+
+        th {
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+
+<h1>⚽ Football Log Book</h1>
+
+<input type="text" id="name" placeholder="Player Name">
+<input type="number" id="amount" placeholder="Amount ₹">
+<button class="add-btn" onclick="addEntry()">Add Player</button>
+
+<h2>Total: ₹ <span id="total">0</span></h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>No.</th>
+            <th>Name</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+let data = JSON.parse(localStorage.getItem("players")) || [];
+
+function saveData() {
+    localStorage.setItem("players", JSON.stringify(data));
+}
+
+function render() {
+    let table = document.getElementById("tableBody");
+    table.innerHTML = "";
+    let total = 0;
+
+    data.forEach((player, index) => {
+        let row = table.insertRow();
+
+        row.insertCell(0).innerText = index + 1;
+        row.insertCell(1).innerText = player.name;
+        row.insertCell(2).innerText = "₹" + player.amount;
+
+        let statusCell = row.insertCell(3);
+        statusCell.innerText = player.status;
+
+        let actionCell = row.insertCell(4);
+
+        actionCell.innerHTML = `
+            <button class="status-btn" onclick="toggleStatus(${index})">Toggle</button>
+            <button class="edit-btn" onclick="editEntry(${index})">Edit</button>
+            <button class="delete-btn" onclick="deleteEntry(${index})">Delete</button>
+        `;
+
+        if (player.status === "Paid") {
+            total += parseInt(player.amount);
+        }
+    });
+
+    document.getElementById("total").innerText = total;
+}
+
+function addEntry() {
+    let name = document.getElementById("name").value;
+    let amount = document.getElementById("amount").value;
+
+    if (name === "" || amount === "") {
+        alert("Fill all fields!");
+        return;
+    }
+
+    data.push({
+        name: name,
+        amount: amount,
+        status: "Paid"
+    });
+
+    saveData();
+    render();
+
+    document.getElementById("name").value = "";
+    document.getElementById("amount").value = "";
+}
+
+function deleteEntry(index) {
+    data.splice(index, 1);
+    saveData();
+    render();
+}
+
+function editEntry(index) {
+    let newName = prompt("Edit Name:", data[index].name);
+    let newAmount = prompt("Edit Amount:", data[index].amount);
+
+    if (newName && newAmount) {
+        data[index].name = newName;
+        data[index].amount = newAmount;
+    }
+
+    saveData();
+    render();
+}
+
+function toggleStatus(index) {
+    data[index].status = data[index].status === "Paid" ? "Pending" : "Paid";
+    saveData();
+    render();
+}
+
+render();
+</script>
+
+</body>
+</html>
