@@ -21,8 +21,8 @@ input {
 }
 
 button {
-    padding: 8px 12px;
-    margin: 5px;
+    padding: 6px 10px;
+    margin: 3px;
     border-radius: 6px;
     border: none;
     cursor: pointer;
@@ -82,10 +82,8 @@ th { background: #333; }
 </table>
 
 <script>
-// 🔐 SAFE STORAGE KEY (DO NOT CHANGE)
 const STORAGE_KEY = "football_log_v1";
 
-// Load data
 let data = loadData();
 
 function loadData() {
@@ -98,12 +96,10 @@ function loadData() {
     }
 }
 
-// Save data
 function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-// Add entry
 function add() {
     let name = document.getElementById("name").value.trim();
     let amount = document.getElementById("amount").value;
@@ -130,14 +126,12 @@ function add() {
     document.getElementById("note").value = "";
 }
 
-// Delete entry
 function remove(index) {
     data.splice(index, 1);
     save();
     render();
 }
 
-// Edit entry
 function edit(index) {
     let p = data[index];
 
@@ -153,7 +147,6 @@ function edit(index) {
     render();
 }
 
-// Download player report
 function downloadPlayer(name) {
     let entries = data.filter(p => p.name === name);
 
@@ -174,7 +167,6 @@ function downloadPlayer(name) {
     a.click();
 }
 
-// Backup data
 function backup() {
     let blob = new Blob([JSON.stringify(data)], {type: "application/json"});
     let a = document.createElement("a");
@@ -183,7 +175,6 @@ function backup() {
     a.click();
 }
 
-// Restore data
 function restore(event) {
     let file = event.target.files[0];
     let reader = new FileReader();
@@ -202,7 +193,6 @@ function restore(event) {
     reader.readAsText(file);
 }
 
-// Render grouped data
 function render() {
     let grouped = {};
     let total = 0;
@@ -231,11 +221,15 @@ function render() {
         row.insertCell(0).innerText = name;
         row.insertCell(1).innerText = "₹" + grouped[name].total;
 
-        let details = grouped[name].entries
-            .map(e => `₹${e.amount} (${e.date || "-"})`)
-            .join(", ");
+        let detailsHTML = grouped[name].entries.map(e => `
+            <div style="margin:5px;">
+                ₹${e.amount} (${e.date || "-"})
+                <button class="edit" onclick="edit(${e.index})">Edit</button>
+                <button class="delete" onclick="remove(${e.index})">Delete</button>
+            </div>
+        `).join("");
 
-        row.insertCell(2).innerText = details;
+        row.insertCell(2).innerHTML = detailsHTML;
 
         let action = row.insertCell(3);
         action.innerHTML = `
