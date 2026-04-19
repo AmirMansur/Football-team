@@ -1,101 +1,222 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Football Payment System</title>
+<title>⚽ Football Log System</title>
+
 <style>
 body {
     font-family: Arial;
-    background: #121212;
+    background: linear-gradient(135deg, #1e1e2f, #121212);
     color: white;
     text-align: center;
 }
+
+h1 { color: #00ffcc; }
+
 input {
     padding: 8px;
     margin: 5px;
-}
-button {
-    padding: 8px;
-    margin: 5px;
+    border-radius: 6px;
     border: none;
-    border-radius: 5px;
+}
+
+button {
+    padding: 8px 12px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
     cursor: pointer;
 }
-.add { background: green; color: white; }
+
+.add { background: #00cc66; color: white; }
+.delete { background: red; color: white; }
+.edit { background: orange; }
+.download { background: purple; color: white; }
+.backup { background: #0099ff; color: white; }
+
 table {
     margin: auto;
+    margin-top: 20px;
     border-collapse: collapse;
-    width: 90%;
+    width: 95%;
 }
+
 th, td {
     border: 1px solid white;
     padding: 8px;
 }
+
+th { background: #333; }
 </style>
 </head>
 
 <body>
 
-<h1>⚽ Payment Tracker</h1>
+<h1>⚽ Football Payment System</h1>
 
 <input id="name" placeholder="Player Name">
 <input id="amount" type="number" placeholder="Amount ₹">
 <input id="date" type="date">
+<input id="note" placeholder="Note">
 
 <button class="add" onclick="add()">Add Entry</button>
+
+<br>
+<button class="backup" onclick="backup()">📥 Backup</button>
+<input type="file" onchange="restore(event)">
 
 <h2>Total Collection: ₹ <span id="total">0</span></h2>
 
 <h2>👥 Player Summary</h2>
+
 <table>
 <thead>
 <tr>
 <th>Name</th>
 <th>Total Paid</th>
 <th>Details</th>
+<th>Action</th>
 </tr>
 </thead>
 <tbody id="summary"></tbody>
 </table>
 
 <script>
-let data = JSON.parse(localStorage.getItem("data")) || [];
+// 🔐 SAFE STORAGE KEY (DO NOT CHANGE)
+const STORAGE_KEY = "football_log_v1";
 
-function save() {
-    localStorage.setItem("data", JSON.stringify(data));
+// Load data
+let data = loadData();
+
+function loadData() {
+    let saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return [];
+    try {
+        return JSON.parse(saved);
+    } catch {
+        return [];
+    }
 }
 
+// Save data
+function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// Add entry
 function add() {
     let name = document.getElementById("name").value.trim();
     let amount = document.getElementById("amount").value;
     let date = document.getElementById("date").value;
+    let note = document.getElementById("note").value;
 
     if (!name || !amount) {
-        alert("Fill all fields");
+        alert("Fill required fields");
         return;
     }
 
-    data.push({ name, amount: parseInt(amount), date });
+    data.push({
+        name,
+        amount: parseInt(amount),
+        date,
+        note
+    });
+
     save();
     render();
 
     document.getElementById("name").value = "";
     document.getElementById("amount").value = "";
+    document.getElementById("note").value = "";
 }
 
+// Delete entry
+function remove(index) {
+    data.splice(index, 1);
+    save();
+    render();
+}
+
+// Edit entry
+function edit(index) {
+    let p = data[index];
+
+    let name = prompt("Edit Name:", p.name);
+    let amount = prompt("Edit Amount:", p.amount);
+
+    if (name && amount) {
+        p.name = name;
+        p.amount = parseInt(amount);
+    }
+
+    save();
+    render();
+}
+
+// Download player report
+function downloadPlayer(name) {
+    let entries = data.filter(p => p.name === name);
+
+    let text = `Player: ${name}\n\n`;
+    let total = 0;
+
+    entries.forEach(e => {
+        text += `₹${e.amount} | ${e.date || "-"} | ${e.note}\n`;
+        total += e.amount;
+    });
+
+    text += `\nTotal: ₹${total}`;
+
+    let blob = new Blob([text], { type: "text/plain" });
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name + "_report.txt";
+    a.click();
+}
+
+// Backup data
+function backup() {
+    let blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "backup.json";
+    a.click();
+}
+
+// Restore data
+function restore(event) {
+    let file = event.target.files[0];
+    let reader = new FileReader();
+
+    reader.onload = function(e) {
+        try {
+            data = JSON.parse(e.target.result);
+            save();
+            render();
+            alert("Data restored!");
+        } catch {
+            alert("Invalid file!");
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+// Render grouped data
 function render() {
     let grouped = {};
     let total = 0;
 
-    // GROUP DATA
-    data.forEach(d => {
+    data.forEach((d, index) => {
         if (!grouped[d.name]) {
             grouped[d.name] = {
                 total: 0,
                 entries: []
             };
         }
+
         grouped[d.name].total += d.amount;
-        grouped[d.name].entries.push(d);
+        grouped[d.name].entries.push({...d, index});
         total += d.amount;
     });
 
@@ -104,7 +225,6 @@ function render() {
     let table = document.getElementById("summary");
     table.innerHTML = "";
 
-    // SHOW GROUPED DATA
     for (let name in grouped) {
         let row = table.insertRow();
 
@@ -112,10 +232,15 @@ function render() {
         row.insertCell(1).innerText = "₹" + grouped[name].total;
 
         let details = grouped[name].entries
-            .map(e => `₹${e.amount} (${e.date})`)
+            .map(e => `₹${e.amount} (${e.date || "-"})`)
             .join(", ");
 
         row.insertCell(2).innerText = details;
+
+        let action = row.insertCell(3);
+        action.innerHTML = `
+            <button class="download" onclick="downloadPlayer('${name}')">Download</button>
+        `;
     }
 }
 
